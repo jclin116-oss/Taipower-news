@@ -4,7 +4,6 @@ import pandas as pd
 from xml.etree import ElementTree
 from datetime import datetime, timedelta
 from urllib.parse import quote
-from bs4 import BeautifulSoup  # 額外引入 BeautifulSoup 來解析內文 HTML
 
 # 網頁基本設定（手機版優化）
 st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
@@ -16,7 +15,7 @@ st.caption("115.6.15/新增支援內文深度檢索")
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
 hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
 
-# 新增一個選項：讓使用者決定要「只比對標題」還是「深度比對內文」
+# 保留你的介面文字
 search_mode = st.radio("搜尋深度", ["檢索標題 (速度快)", "檢索標題及內文（測試）"], horizontal=True)
 
 if st.button("開始", type="primary"):
@@ -30,7 +29,16 @@ if st.button("開始", type="primary"):
 
     with st.spinner("搜集中，請稍候..."):
         for group in keyword_groups:
-            search_query = group.replace(' ', ' AND ')
+            check_words = group.split() 
+            
+            # 根據選擇的搜尋深度，動態調整送給 Google 的搜尋指令
+            if "檢索標題及內文" in search_mode:
+                # 轉成 intext:"字A" AND intext:"字B" 的內文搜尋指令
+                search_query = " AND ".join([f'intext:"{word}"' for word in check_words])
+            else:
+                # 一般的字詞「且」搜尋
+                search_query = group.replace(' ', ' AND ')
+                
             encoded_query = quote(search_query)
             url = f"https://news.google.com/rss/search?q={encoded_query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
             
@@ -38,76 +46,36 @@ if st.button("開始", type="primary"):
                 response = requests.get(url, timeout=15, headers=headers)
                 if response.status_code == 200:
                     tree = ElementTree.fromstring(response.content)
-                    check_words = group.split() 
 
                     for item in tree.findall('.//item'):
                         title = item.find('title').text if item.find('title') is not None else ""
-                        link = item.find('link').text if item.find('link') is not None else ""
-                        
                         pub_date_str = item.find('pubDate').text
                         pub_date = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
                         
-                        # 優先篩選時間，符合時間的才點進去抓內文，節省時間
+                        # 優先篩選時間
                         if pub_date > time_limit:
+                            link = item.find('link').text if item.find('link') is not None else ""
+                            source_el = item.find('source')
+                            source = source_el.text if source_el is not None else "網路"
+                            tw_time = (pub_date + timedelta(hours=8)).strftime('%m-%d %H:%M')
                             
-                            is_match = False
-                            content_snippet = "未開啟內文檢索"
+                            content_snippet = "已由Google完成內文檢索" if "檢索標題及內文" in search_mode else "未開啟內文檢索"
                             
-                            # 模式 1：僅比對標題
-                            if "僅比對標題" in search_mode:
-                                if any(word.lower() in title.lower() for word in check_words):
-                                    is_match = True
-                            
-                                                # 模式 2：深度比對內文
-                            else:
-                                # 先看標題有沒有，標題有就直接算命中
-                                if any(word.lower() in title.lower() for word in check_words):
-                                    is_match = True
-                                else:
-                                    # 標題沒有，解析真實連結並抓取內文
-                                    try:
-                                        # 使用 allow_redirects=True 允許追蹤重導向，取得真實媒體網址
-                                        real_res = requests.head(link, allow_redirects=True, timeout=5, headers=headers)
-                                        real_url = real_res.url
-                                        
-                                        # 請求真實新聞頁面
-                                        art_res = requests.get(real_url, timeout=5, headers=headers)
-                                        if art_res.status_code == 200:
-                                            soup = BeautifulSoup(art_res.content, 'html.parser')
-                                            
-                                            # 移除噪音標籤
-                                            for script in soup(["script", "style", "header", "footer", "nav"]):
-                                                script.decompose()
-                                            article_text = soup.get_text()
-                                            
-                                            # 檢查所有關鍵字是否都在內文中（且邏輯）
-                                            if all(word.lower() in article_text.lower() for word in check_words):
-                                                is_match = True
-                                                content_snippet = article_text.replace('\n', ' ').strip()[:100] + "..."
-                                    except Exception as e:
-                                        pass # 遇到阻擋或連線逾時則跳過
-
-                            
-                            # 確定命中後才寫入報表
-                            if is_match:
-                                source_el = item.find('source')
-                                source = source_el.text if source_el is not None else "網路"
-                                tw_time = (pub_date + timedelta(hours=8)).strftime('%m-%d %H:%M')
-                                
-                                all_news.append({
-                                    "搜尋組": group,
-                                    "時間": tw_time,
-                                    "媒體": source,
-                                    "新聞標題": title,
-                                    "內文片段": content_snippet,
-                                    "連結": link
-                                })
+                            all_news.append({
+                                "搜尋組": group,
+                                "時間": tw_time,
+                                "媒體": source,
+                                "新聞標題": title,
+                                "內文狀態": content_snippet,
+                                "連結": link
+                            })
             except Exception as e:
                 st.error(f"分析組别 [{group}] 時發生異常")
 
     # 顯示結果
     if all_news:
-        df = pd.DataFrame(all_news)
+        # 去除重複標題的新聞
+        df = pd.DataFrame(all_news).drop_duplicates(subset=["新聞標題"])
         st.success(f"搜集成功！共發現 {len(df)} 則符合條件的輿情訊息。")
         st.dataframe(df, use_container_width=True)
         
