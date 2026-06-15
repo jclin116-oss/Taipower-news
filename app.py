@@ -58,31 +58,35 @@ if st.button("開始", type="primary"):
                                 if any(word.lower() in title.lower() for word in check_words):
                                     is_match = True
                             
-                            # 模式 2：深度比對內文
+                                                # 模式 2：深度比對內文
                             else:
                                 # 先看標題有沒有，標題有就直接算命中
                                 if any(word.lower() in title.lower() for word in check_words):
                                     is_match = True
                                 else:
-                                    # 標題沒有，點進去原始新聞網頁抓內文
+                                    # 標題沒有，解析真實連結並抓取內文
                                     try:
-                                        # 請求原始新聞頁面
-                                        art_res = requests.get(link, timeout=5, headers=headers)
+                                        # 使用 allow_redirects=True 允許追蹤重導向，取得真實媒體網址
+                                        real_res = requests.head(link, allow_redirects=True, timeout=5, headers=headers)
+                                        real_url = real_res.url
+                                        
+                                        # 請求真實新聞頁面
+                                        art_res = requests.get(real_url, timeout=5, headers=headers)
                                         if art_res.status_code == 200:
-                                            # 使用 BeautifulSoup 撈出網頁內所有文字
                                             soup = BeautifulSoup(art_res.content, 'html.parser')
-                                            # 移除不必要的 script 和 style 標籤
-                                            for script in soup(["script", "style"]):
+                                            
+                                            # 移除噪音標籤
+                                            for script in soup(["script", "style", "header", "footer", "nav"]):
                                                 script.decompose()
                                             article_text = soup.get_text()
                                             
-                                            # 檢查所有關鍵字是否都在內文中
-                                            if any(word.lower() in article_text.lower() for word in check_words):
+                                            # 檢查所有關鍵字是否都在內文中（且邏輯）
+                                            if all(word.lower() in article_text.lower() for word in check_words):
                                                 is_match = True
-                                                # 擷取一段包含關鍵字的內文摘要（選填）
                                                 content_snippet = article_text.replace('\n', ' ').strip()[:100] + "..."
-                                    except:
-                                        pass # 遇到部分媒體阻擋爬蟲時跳過
+                                    except Exception as e:
+                                        pass # 遇到阻擋或連線逾時則跳過
+
                             
                             # 確定命中後才寫入報表
                             if is_match:
