@@ -16,7 +16,7 @@ keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基
 hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
 
 # 保留你的介面文字
-search_mode = st.radio("搜尋深度", ["檢索標題（優化）", "取消"], horizontal=True)
+search_mode = st.radio("搜尋深度", ["檢索（優化）"], horizontal=True)
 
 if st.button("開始", type="primary"):
     keyword_groups = [g.strip() for g in keywords.replace('，', ',').split(',') if g.strip()]
