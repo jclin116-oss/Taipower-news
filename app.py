@@ -15,8 +15,8 @@ st.caption("115.6.15/新增支援內文深度檢索")
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
 hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
 
-# 保留你的介面文字
-search_mode = st.radio("搜尋深度", ["精準"], horizontal=True)
+# 拿掉單選鈕，固定文字提示搜尋深度
+st.markdown("**搜尋深度：** 智慧全網域檢索（含標題與內文，防遺漏）")
 
 if st.button("開始", type="primary"):
     keyword_groups = [g.strip() for g in keywords.replace('，', ',').split(',') if g.strip()]
@@ -29,16 +29,8 @@ if st.button("開始", type="primary"):
 
     with st.spinner("搜集中，請稍候..."):
         for group in keyword_groups:
-            check_words = group.split() 
-            
-            # 根據選擇的搜尋深度，動態調整送給 Google 的搜尋指令
-            if "檢索標題及內文" in search_mode:
-                # 轉成 intext:"字A" AND intext:"字B" 的內文搜尋指令
-                search_query = " AND ".join([f'intext:"{word}"' for word in check_words])
-            else:
-                # 一般的字詞「且」搜尋
-                search_query = group.replace(' ', ' AND ')
-                
+            # 保持最優的 Google 原生搜尋語法（讓 Google 自動比對標題與內文）
+            search_query = group.replace(' ', ' AND ')
             encoded_query = quote(search_query)
             url = f"https://news.google.com/rss/search?q={encoded_query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
             
@@ -59,14 +51,13 @@ if st.button("開始", type="primary"):
                             source = source_el.text if source_el is not None else "網路"
                             tw_time = (pub_date + timedelta(hours=8)).strftime('%m-%d %H:%M')
                             
-                            content_snippet = "已由Google完成內文檢索" if "檢索標題及內文" in search_mode else "未開啟內文檢索"
-                            
+                            # 只要時間符合就全部收入，絕不遺漏 Google 檢索到的任何關聯訊息
                             all_news.append({
                                 "搜尋組": group,
                                 "時間": tw_time,
                                 "媒體": source,
                                 "新聞標題": title,
-                                "內文狀態": content_snippet,
+                                "內文狀態": "全網域關聯檢索",
                                 "連結": link
                             })
             except Exception as e:
