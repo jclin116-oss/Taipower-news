@@ -9,19 +9,22 @@ from urllib.parse import quote
 st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
 
 st.title("⚡️新聞輿情")
-st.caption("115.6.15/改善深度檢索")
+st.caption("115.6.16/優化時區校正機制")
 
 # 建立網頁輸入欄位
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
 hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
 
 # 拿掉單選鈕，固定文字提示搜尋深度
-st.markdown("搜尋深度：全檢索")
+st.markdown("**搜尋深度：** 智慧全網域檢索（含標題與內文，防遺漏）")
 
 if st.button("開始", type="primary"):
     keyword_groups = [g.strip() for g in keywords.replace('，', ',').split(',') if g.strip()]
     all_news = []
-    time_limit = datetime.now() - timedelta(hours=hours)
+    
+    # 統一基準點：計算台灣時間的時間切點
+    now_tw = datetime.now()
+    time_limit_tw = now_tw - timedelta(hours=hours)
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
@@ -29,7 +32,9 @@ if st.button("開始", type="primary"):
 
     with st.spinner("搜集中，請稍候..."):
         for group in keyword_groups:
-            # 保持最優的 Google 原生搜尋語法（讓 Google 自動比對標題與內文）
+            check_words = group.split() 
+            
+            # 維持最保險的模糊搜尋（不加引號），防漏效果最好
             search_query = group.replace(' ', ' AND ')
             encoded_query = quote(search_query)
             url = f"https://news.google.com/rss/search?q={encoded_query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
@@ -42,19 +47,22 @@ if st.button("開始", type="primary"):
                     for item in tree.findall('.//item'):
                         title = item.find('title').text if item.find('title') is not None else ""
                         pub_date_str = item.find('pubDate').text
-                        pub_date = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
                         
-                        # 優先篩選時間
-                        if pub_date > time_limit:
+                        # 解析 Google RSS 的原始 GMT 時間
+                        pub_date_gmt = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
+                        # 【優化點】立即轉換為台灣時間（+8小時），用相同的時區標準進行比對
+                        pub_date_tw = pub_date_gmt + timedelta(hours=8)
+                        
+                        # 時間過濾：用台灣時間進行比對，徹底解決 8 小時時區造成的漏網之魚
+                        if pub_date_tw > time_limit_tw:
                             link = item.find('link').text if item.find('link') is not None else ""
                             source_el = item.find('source')
                             source = source_el.text if source_el is not None else "網路"
-                            tw_time = (pub_date + timedelta(hours=8)).strftime('%m-%d %H:%M')
+                            display_time = pub_date_tw.strftime('%m-%d %H:%M')
                             
-                            # 只要時間符合就全部收入，絕不遺漏 Google 檢索到的任何關聯訊息
                             all_news.append({
                                 "搜尋組": group,
-                                "時間": tw_time,
+                                "時間": display_time,
                                 "媒體": source,
                                 "新聞標題": title,
                                 "內文狀態": "全網域關聯檢索",
