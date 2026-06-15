@@ -9,11 +9,14 @@ from urllib.parse import quote
 st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
 
 st.title("⚡️新聞輿情")
-st.caption("115.6.15/優化檢索機制")
+st.caption("115.6.15/新增支援內文深度檢索")
 
 # 建立網頁輸入欄位
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
 hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
+
+# 保留你的介面文字
+search_mode = st.radio("搜尋深度", ["檢索標題（優化）", "取消"], horizontal=True)
 
 if st.button("開始", type="primary"):
     keyword_groups = [g.strip() for g in keywords.replace('，', ',').split(',') if g.strip()]
@@ -28,8 +31,14 @@ if st.button("開始", type="primary"):
         for group in keyword_groups:
             check_words = group.split() 
             
-            # 統一使用最穩定的 Google 原生搜尋語法（全網檢索）
-            search_query = group.replace(' ', ' AND ')
+            # 根據選擇的搜尋深度，動態調整送給 Google 的搜尋指令
+            if "檢索標題及內文" in search_mode:
+                # 轉成 intext:"字A" AND intext:"字B" 的內文搜尋指令
+                search_query = " AND ".join([f'intext:"{word}"' for word in check_words])
+            else:
+                # 一般的字詞「且」搜尋
+                search_query = group.replace(' ', ' AND ')
+                
             encoded_query = quote(search_query)
             url = f"https://news.google.com/rss/search?q={encoded_query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
             
@@ -45,27 +54,21 @@ if st.button("開始", type="primary"):
                         
                         # 優先篩選時間
                         if pub_date > time_limit:
+                            link = item.find('link').text if item.find('link') is not None else ""
+                            source_el = item.find('source')
+                            source = source_el.text if source_el is not None else "網路"
+                            tw_time = (pub_date + timedelta(hours=8)).strftime('%m-%d %H:%M')
                             
-                            is_match = False
+                            content_snippet = "已由Google完成內文檢索" if "檢索標題及內文" in search_mode else "未開啟內文檢索"
                             
-                            # 固定執行：檢索標題 -> 程式嚴格篩選，標題沒關鍵字就淘汰
-                            if any(word.lower() in title.lower() for word in check_words):
-                                is_match = True
-                                
-                            if is_match:
-                                link = item.find('link').text if item.find('link') is not None else ""
-                                source_el = item.find('source')
-                                source = source_el.text if source_el is not None else "網路"
-                                tw_time = (pub_date + timedelta(hours=8)).strftime('%m-%d %H:%M')
-                                
-                                all_news.append({
-                                    "搜尋組": group,
-                                    "時間": tw_time,
-                                    "媒體": source,
-                                    "新聞標題": title,
-                                    "檢索範圍": "嚴格限定標題文字",
-                                    "連結": link
-                                })
+                            all_news.append({
+                                "搜尋組": group,
+                                "時間": tw_time,
+                                "媒體": source,
+                                "新聞標題": title,
+                                "內文狀態": content_snippet,
+                                "連結": link
+                            })
             except Exception as e:
                 st.error(f"分析組别 [{group}] 時發生異常")
 
