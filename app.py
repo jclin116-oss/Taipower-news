@@ -10,14 +10,14 @@ from bs4 import BeautifulSoup  # 額外引入 BeautifulSoup 來解析內文 HTML
 st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
 
 st.title("⚡️新聞輿情")
-st.caption("115.6.15/新增支援內文檢索（測試版）")
+st.caption("115.6.15/新增支援內文檢索")
 
 # 建立網頁輸入欄位
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
 hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
 
 # 新增一個選項：讓使用者決定要「只比對標題」還是「深度比對內文」
-search_mode = st.radio("搜尋深度", ["檢索標題 (速度快)", "檢索標題及內文 (速度較慢，但遺漏機率較低)"], horizontal=True)
+search_mode = st.radio("搜尋深度", ["檢索標題 (速度快)", "檢索標題及內文（測試）"], horizontal=True)
 
 if st.button("開始", type="primary"):
     keyword_groups = [g.strip() for g in keywords.replace('，', ',').split(',') if g.strip()]
@@ -109,7 +109,7 @@ if st.button("開始", type="primary"):
         
         csv_data = df.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
-            label="(下載報表 (CSV 檔案)",
+            label="下載報表 (CSV 檔案)",
             data=csv_data,
             file_name=f"新聞追蹤_{datetime.now().strftime('%m%d_%H%M')}.csv",
             mime='text/csv',
