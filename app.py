@@ -7,19 +7,19 @@ from urllib.parse import quote
 from bs4 import BeautifulSoup  # 額外引入 BeautifulSoup 來解析內文 HTML
 
 # 網頁基本設定（手機版優化）
-st.set_page_config(page_title="台電輿情哨兵", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
 
-st.title("⚡ 輿情採集控制台")
-st.caption("Mentat 輿情哨兵 - 網頁行動版 v4.1（支援內文深度檢索）")
+st.title("⚡新聞")
+st.caption("台電新聞輿情 - 網頁行動版（支援內文深度檢索）")
 
 # 建立網頁輸入欄位
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
-hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=72, value=24)
+hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
 
 # 新增一個選項：讓使用者決定要「只比對標題」還是「深度比對內文」
 search_mode = st.radio("檢索深度", ["僅比對標題 (速度快)", "深度比對內文 (速度慢，但更精準)"], horizontal=True)
 
-if st.button("🚀 開始採集輿情", type="primary"):
+if st.button("開始", type="primary"):
     keyword_groups = [g.strip() for g in keywords.replace('，', ',').split(',') if g.strip()]
     all_news = []
     time_limit = datetime.now() - timedelta(hours=hours)
@@ -28,7 +28,7 @@ if st.button("🚀 開始採集輿情", type="primary"):
         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
     }
 
-    with st.spinner("網域數據採集中，請稍候..."):
+    with st.spinner("搜集中，請稍候..."):
         for group in keyword_groups:
             search_query = group.replace(' ', ' AND ')
             encoded_query = quote(search_query)
@@ -104,14 +104,14 @@ if st.button("🚀 開始採集輿情", type="primary"):
     # 顯示結果
     if all_news:
         df = pd.DataFrame(all_news)
-        st.success(f"採集成功！共發現 {len(df)} 則符合條件的輿情訊息。")
+        st.success(f"搜集成功！共發現 {len(df)} 則符合條件的輿情訊息。")
         st.dataframe(df, use_container_width=True)
         
         csv_data = df.to_csv(index=False).encode('utf-8-sig')
         st.download_button(
-            label="💾 下載輿情報表 (CSV 檔案)",
+            label="💾 下載報表 (CSV 檔案)",
             data=csv_data,
-            file_name=f"輿情追蹤_{datetime.now().strftime('%m%d_%H%M')}.csv",
+            file_name=f"新聞追蹤_{datetime.now().strftime('%m%d_%H%M')}.csv",
             mime='text/csv',
         )
     else:
