@@ -1,4 +1,3 @@
-再檢視一下有沒有錯誤
 import streamlit as st
 import requests
 import pandas as pd
