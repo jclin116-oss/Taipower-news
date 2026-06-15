@@ -9,8 +9,8 @@ from bs4 import BeautifulSoup  # 額外引入 BeautifulSoup 來解析內文 HTML
 # 網頁基本設定（手機版優化）
 st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
 
-st.title("⚡️台電新聞手機版")
-st.caption("115.6.15/新增支援內文檢索/u272260")
+st.title("⚡️新聞輿情")
+st.caption("115.6.15/新增支援內文檢索（測試版）")
 
 # 建立網頁輸入欄位
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
