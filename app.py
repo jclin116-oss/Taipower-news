@@ -9,7 +9,7 @@ from urllib.parse import quote
 st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
 
 st.title("⚡️新聞輿情")
-st.caption("115.6.16-272260優化時區校正機制,刪除重複")
+st.caption("115.6.16-u272260-優化時區校正機制,刪除重複")
 
 # 建立網頁輸入欄位
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
