@@ -9,13 +9,15 @@ from urllib.parse import quote
 st.set_page_config(page_title="台電新聞輿情u272260", page_icon="⚡", layout="centered")
 
 st.title("⚡️新聞輿情")
-st.caption("115.6.16-u272260-優化時區校正機制,刪除重複")
+st.caption("115.6.16-u272260-優化時區校正機制,刪除重複 (輸入框版)")
 
 # 建立網頁輸入欄位
 keywords = st.text_input("請輸入關鍵字（空格=且，逗號=或）", "基隆 台電")
-hours = st.slider("請選擇時間範圍（過去幾小時內）", min_value=1, max_value=120, value=24)
 
-# 拿掉單選鈕，固定文字提示搜尋深度
+# 【修改點】將 st.slider 改為 st.number_input，更方便手機輸入數字
+hours = st.number_input("請輸入時間範圍（過去幾小時內）", min_value=1, max_value=720, value=24, step=1)
+
+# 固定文字提示搜尋深度
 st.markdown("搜尋深度：全網域檢索")
 
 if st.button("開始", type="primary"):
@@ -24,7 +26,7 @@ if st.button("開始", type="primary"):
     
     # 統一基準點：計算台灣時間的時間切點
     now_tw = datetime.now()
-    time_limit_tw = now_tw - timedelta(hours=hours)
+    time_limit_tw = now_tw - timedelta(hours=int(hours))
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'
@@ -50,7 +52,7 @@ if st.button("開始", type="primary"):
                         
                         # 解析 Google RSS 的原始 GMT 時間
                         pub_date_gmt = datetime.strptime(pub_date_str, '%a, %d %b %Y %H:%M:%S %Z')
-                        # 【優化點】立即轉換為台灣時間（+8小時），用相同的時區標準進行比對
+                        # 立即轉換為台灣時間（+8小時），用相同的時區標準進行比對
                         pub_date_tw = pub_date_gmt + timedelta(hours=8)
                         
                         # 時間過濾：用台灣時間進行比對，徹底解決 8 小時時區造成的漏網之魚
@@ -58,7 +60,7 @@ if st.button("開始", type="primary"):
                             link = item.find('link').text if item.find('link') is not None else ""
                             source_el = item.find('source')
                             source = source_el.text if source_el is not None else "網路"
-                            display_time = pub_date_tw.strftime('%m-%d %H:%M')
+                            display_time = pub_date_tw.strftime('%Y-%m-%d %H:%M')
                             
                             all_news.append({
                                 "搜尋組": group,
